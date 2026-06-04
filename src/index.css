@@ -1434,53 +1434,29 @@ select:focus {
   .sidebar-desktop { display: none; }
 }
 
-.mobile-overlay {
+.mobile-sidebar {
   display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 80;
 }
 @media (max-width: 768px) {
-  .mobile-overlay.show { display: block; }
+  .mobile-sidebar {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(0,0,0,0.5);
+  }
+  .mobile-sidebar.show { display: block; }
 }
-
-.mobile-sidebar {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  overflow-y: auto;
-}
-.mobile-sidebar .sidebar {
-  display: flex;
+.mobile-sidebar-panel {
   width: 280px;
   min-height: 100vh;
+  background: var(--color-surface);
   border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
-  flex-direction: column;
-}
-.mobile-sidebar-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 10px 0;
-  background: var(--color-surface);
+  overflow-y: auto;
 }
 @media (min-width: 769px) {
-  .mobile-sidebar,
-  .mobile-sidebar-header { display: none; }
+  .mobile-sidebar { display: none !important; }
 }
-.mobile-close-btn {
-  background: none;
-  border: none;
-  color: var(--color-muted);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.mobile-close-btn:hover { background: #ffffff10; color: var(--color-text); }
 
 .mobile-topbar {
   display: none;
@@ -1581,4 +1557,33 @@ select:focus {
 @media (max-width: 600px) {
   .task-card-body { padding: 10px; }
   .task-card-title { font-size: 13px; }
+}
+
+/* ─── MEMBER SCHEDULE TOUCH OPTIMIZATION ─── */
+@media (max-width: 768px) {
+  .members-grid {
+    margin: 0 -4px;
+  }
+  .member-card {
+    padding: 12px;
+    border-radius: var(--radius-sm);
+  }
+  .schedule-grid {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .schedule-col-header {
+    grid-template-columns: 36px repeat(7, 1fr);
+  }
+  .schedule-row {
+    grid-template-columns: 36px repeat(7, 1fr);
+  }
+  .slot {
+    aspect-ratio: auto;
+    min-height: 38px;
+    touch-action: manipulation;
+  }
+  .slot:hover {
+    transform: none;
+  }
 }

@@ -12,11 +12,6 @@ const IconMenu = () => (
     <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
-const IconX = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-);
 
 export default function App() {
   const { tab, groups, currentGroupId } = useApp();
@@ -25,18 +20,11 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className={`mobile-overlay ${mobileOpen ? 'show' : ''}`} onClick={() => setMobileOpen(false)} />
-
-      {mobileOpen && (
-        <div className="mobile-sidebar">
-          <div className="mobile-sidebar-header">
-            <button className="mobile-close-btn" onClick={() => setMobileOpen(false)} type="button">
-              <IconX />
-            </button>
-          </div>
+      <div className={`mobile-sidebar ${mobileOpen ? 'show' : ''}`} onClick={() => setMobileOpen(false)}>
+        <div className="mobile-sidebar-panel" onClick={e => e.stopPropagation()}>
           <AppSidebar onClose={() => setMobileOpen(false)} />
         </div>
-      )}
+      </div>
 
       <div className="sidebar-desktop">
         <AppSidebar />
