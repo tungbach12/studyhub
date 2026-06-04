@@ -1,11 +1,4 @@
-const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1';
-const MODEL = import.meta.env.VITE_NVIDIA_MODEL || 'moonshotai/kimi-k2.6';
-
-function getApiKey(): string {
-  const key = import.meta.env.VITE_NVIDIA_API_KEY;
-  if (!key) throw new Error('Missing VITE_NVIDIA_API_KEY env var');
-  return key;
-}
+const API_ENDPOINT = '/api/nvidia';
 
 interface RawTask {
   title: string;
@@ -32,15 +25,14 @@ ${raw}`;
 }
 
 async function callNVIDIA(body: object): Promise<string> {
-  const apiKey = getApiKey();
-  const res = await fetch(`${NVIDIA_BASE}/chat/completions`, {
+  const res = await fetch(API_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-    body: JSON.stringify({ ...body, stream: false }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`NVIDIA API error ${res.status}: ${text}`);
+    throw new Error(`API error ${res.status}: ${text}`);
   }
   const data = await res.json();
   const msg = data.choices?.[0]?.message;
@@ -50,7 +42,7 @@ async function callNVIDIA(body: object): Promise<string> {
 
 export async function parseTasksFromText(raw: string): Promise<RawTask[]> {
   const content = await callNVIDIA({
-    model: MODEL,
+    model: 'moonshotai/kimi-k2.6',
     messages: [{ role: 'user', content: buildPrompt(raw) }],
     temperature: 0.2,
     max_tokens: 4096,
@@ -62,7 +54,7 @@ export async function parseTasksFromText(raw: string): Promise<RawTask[]> {
 
 export async function parseTasksFromImage(base64: string): Promise<RawTask[]> {
   const content = await callNVIDIA({
-    model: MODEL,
+    model: 'moonshotai/kimi-k2.6',
     messages: [
       {
         role: 'user',
