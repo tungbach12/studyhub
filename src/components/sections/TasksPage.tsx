@@ -103,6 +103,7 @@ function TaskFormModal({
   const [deadline, setDeadline] = useState('');
   const [desc, setDesc] = useState('');
 
+  const { currentGroupId } = useApp();
   const isEditing = editTask !== null;
 
   useEffect(() => {
@@ -127,6 +128,7 @@ function TaskFormModal({
       description: desc,
       assigneeId: assigneeId || null,
       deadline: deadline || null,
+      groupId: currentGroupId,
     });
     setTitle(''); setDesc(''); setDeadline('');
     onClose();

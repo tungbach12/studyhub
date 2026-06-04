@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import type { Member, Subject, Task, Tab } from '../types';
+import type { Member, Subject, Task, Tab, Group } from '../types';
 import { loadState, saveState, seedData } from '../lib/store';
 import { hasFirebaseConfig } from '../lib/firebase';
 import {
-  subscribeMembers,
-  subscribeSubjects,
-  subscribeTasks,
+  subscribeGroups as fbSubscribeGroups,
+  subscribeMembers as fbSubscribeMembers,
+  subscribeSubjects as fbSubscribeSubjects,
+  subscribeTasks as fbSubscribeTasks,
+  setGroup as fbSetGroup,
   setMember as fbSetMember,
   removeMember as fbRemoveMember,
   setSubject as fbSetSubject,
@@ -16,11 +18,14 @@ import {
 
 const STORAGE_KEY = 'group-study-app-v1';
 
-type State = { members: Member[]; subjects: Subject[]; tasks: Task[] };
+type State = { groups: Group[]; members: Member[]; subjects: Subject[]; tasks: Task[] };
 
 type Ctx = State & {
   tab: Tab;
   setTab: (t: Tab) => void;
+  currentGroupId: string;
+  setCurrentGroupId: (id: string) => void;
+  addGroup: (name: string) => void;
   addMember: (name: string) => void;
   updateMember: (id: string, patch: Partial<Member>) => void;
   removeMember: (id: string) => void;
@@ -35,116 +40,169 @@ type Ctx = State & {
 
 const AppCtx = createContext<Ctx | null>(null);
 
-function initLocalState(): State {
-  const raw = loadState<Partial<State> | null>(STORAGE_KEY, null);
-  return {
-    members: raw?.members?.length ? raw.members : [...seedData.members],
-    subjects: raw?.subjects?.length ? raw.subjects : [...seedData.subjects],
-    tasks: raw?.tasks ?? [],
-  };
-}
-
 export function useApp() {
   const ctx = useContext(AppCtx);
   if (!ctx) throw new Error('useApp outside provider');
   return ctx;
 }
 
+const genId = (): string =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const fbMode = hasFirebaseConfig();
   const [tab, setTab] = useState<Tab>('dashboard');
-  const [state, setState] = useState<State>(() => fbMode ? { members: [], subjects: [], tasks: [] } : initLocalState());
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [currentGroupId, setCurrentGroupId] = useState('');
+  const [members, setMembers] = useState<Member[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [online, setOnline] = useState(false);
+  const [fbReady, setFbReady] = useState(false);
 
-  // ─── Firestore real-time subscribers ───
+  // ─── Firestore groups subscription ───
   useEffect(() => {
-    if (!fbMode) return;
+    if (!fbMode) {
+      const local = loadState<Partial<State> | null>(STORAGE_KEY, null);
+      const gs = local?.groups?.length ? local.groups : [{ id: 'default', name: 'Nhóm 1', createdAt: new Date().toISOString() }];
+      setGroups(gs);
+      setCurrentGroupId(gs[0].id);
+      setMembers(local?.members?.length ? local.members : seedData.members.map(m => ({ ...m, groupId: gs[0].id })));
+      setSubjects(local?.subjects?.length ? local.subjects : seedData.subjects.map(s => ({ ...s, groupId: gs[0].id })));
+      setTasks(local?.tasks ?? []);
+      setOnline(false);
+      return;
+    }
+
+    const unsubGroups = fbSubscribeGroups(list => {
+      setGroups(list);
+      if (list.length > 0) {
+        setCurrentGroupId(prev => prev || list[0].id);
+        setFbReady(true);
+      } else {
+        // auto-create first group
+        const g: Group = { id: genId(), name: 'Nhóm 1', createdAt: new Date().toISOString() };
+        fbSetGroup(g);
+      }
+    });
+
+    return () => { unsubGroups?.(); };
+  }, [fbMode]);
+
+  // ─── Firestore data subscriptions (per group) ───
+  useEffect(() => {
+    if (!fbMode || !currentGroupId) return;
+    setOnline(true);
+
     const unsubs: (() => void)[] = [];
 
-    const sub1 = subscribeMembers(list => { setState(prev => ({ ...prev, members: list })); setOnline(true); });
-    const sub2 = subscribeSubjects(list => { setState(prev => ({ ...prev, subjects: list })); setOnline(true); });
-    const sub3 = subscribeTasks(list => { setState(prev => ({ ...prev, tasks: list })); setOnline(true); });
+    const sub1 = fbSubscribeMembers(currentGroupId, list => { setMembers(list); });
+    const sub2 = fbSubscribeSubjects(currentGroupId, list => { setSubjects(list); });
+    const sub3 = fbSubscribeTasks(currentGroupId, list => { setTasks(list); });
 
     if (sub1) unsubs.push(sub1);
     if (sub2) unsubs.push(sub2);
     if (sub3) unsubs.push(sub3);
 
     return () => unsubs.forEach(u => u());
-  }, [fbMode]);
+  }, [fbMode, currentGroupId]);
 
   // ─── Persist helper (local mode only) ───
-  const persist = useCallback((patch: Partial<State>) => {
+  const persist = useCallback(() => {
     if (fbMode) return;
-    setState(prev => {
-      const next = { ...prev, ...patch };
-      saveState(STORAGE_KEY, next);
-      return next;
-    });
-  }, [fbMode]);
+    saveState(STORAGE_KEY, { groups, members, subjects, tasks });
+  }, [fbMode, groups, members, subjects, tasks]);
 
-  // ─── Mutations ───
+  // ─── Group ───
+  const addGroup = useCallback((name: string) => {
+    const g: Group = { id: genId(), name, createdAt: new Date().toISOString() };
+    if (fbMode) { fbSetGroup(g); return; }
+    setGroups(prev => [...prev, g]);
+    setCurrentGroupId(g.id);
+    persist();
+  }, [fbMode, persist]);
+
+  // ─── Member mutations ───
   const addMember = useCallback((name: string) => {
-    const m: Member = { id: crypto.randomUUID(), name, schedule: Array.from({ length: 63 }, () => true) };
+    if (!currentGroupId) return;
+    const m: Member = { id: genId(), name, groupId: currentGroupId, schedule: Array.from({ length: 63 }, () => true) };
     if (fbMode) { fbSetMember(m); return; }
-    persist({ members: [...state.members, m] });
-  }, [state.members, persist, fbMode]);
+    setMembers(prev => [...prev, m]);
+    persist();
+  }, [currentGroupId, fbMode, persist]);
 
   const updateMember = useCallback((id: string, patch: Partial<Member>) => {
     if (fbMode) {
-      const existing = state.members.find(m => m.id === id);
+      const existing = members.find(m => m.id === id);
       if (existing) fbSetMember({ ...existing, ...patch });
       return;
     }
-    persist({ members: state.members.map(m => m.id === id ? { ...m, ...patch } : m) });
-  }, [state.members, persist, fbMode]);
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
+    persist();
+  }, [members, fbMode, persist]);
 
   const removeMember = useCallback((id: string) => {
     if (fbMode) { fbRemoveMember(id); return; }
-    persist({ members: state.members.filter(m => m.id !== id) });
-  }, [state.members, persist, fbMode]);
+    setMembers(prev => prev.filter(m => m.id !== id));
+    persist();
+  }, [fbMode, persist]);
 
+  // ─── Subject mutations ───
   const addSubject = useCallback((name: string, color: string) => {
-    const s: Subject = { id: crypto.randomUUID(), name, color };
+    if (!currentGroupId) return;
+    const s: Subject = { id: genId(), name, color, groupId: currentGroupId };
     if (fbMode) { fbSetSubject(s); return; }
-    persist({ subjects: [...state.subjects, s] });
-  }, [state.subjects, persist, fbMode]);
+    setSubjects(prev => [...prev, s]);
+    persist();
+  }, [currentGroupId, fbMode, persist]);
 
   const updateSubject = useCallback((id: string, patch: Partial<Subject>) => {
     if (fbMode) {
-      const existing = state.subjects.find(s => s.id === id);
+      const existing = subjects.find(s => s.id === id);
       if (existing) fbSetSubject({ ...existing, ...patch });
       return;
     }
-    persist({ subjects: state.subjects.map(s => s.id === id ? { ...s, ...patch } : s) });
-  }, [state.subjects, persist, fbMode]);
+    setSubjects(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+    persist();
+  }, [subjects, fbMode, persist]);
 
   const removeSubject = useCallback((id: string) => {
     if (fbMode) { fbRemoveSubject(id); return; }
-    persist({ subjects: state.subjects.filter(s => s.id !== id) });
-  }, [state.subjects, persist, fbMode]);
+    setSubjects(prev => prev.filter(s => s.id !== id));
+    persist();
+  }, [fbMode, persist]);
 
+  // ─── Task mutations ───
   const addTask = useCallback((t: Omit<Task, 'id'>) => {
-    const task: Task = { ...t, id: crypto.randomUUID() };
+    if (!currentGroupId) return;
+    const task: Task = { ...t, groupId: currentGroupId, id: genId() };
     if (fbMode) { fbSetTask(task); return; }
-    persist({ tasks: [...state.tasks, task] });
-  }, [state.tasks, persist, fbMode]);
+    setTasks(prev => [...prev, task]);
+    persist();
+  }, [currentGroupId, fbMode, persist]);
 
   const updateTask = useCallback((id: string, patch: Partial<Task>) => {
     if (fbMode) {
-      const existing = state.tasks.find(t => t.id === id);
+      const existing = tasks.find(t => t.id === id);
       if (existing) fbSetTask({ ...existing, ...patch });
       return;
     }
-    persist({ tasks: state.tasks.map(t => t.id === id ? { ...t, ...patch } : t) });
-  }, [state.tasks, persist, fbMode]);
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+    persist();
+  }, [tasks, fbMode, persist]);
 
   const removeTask = useCallback((id: string) => {
     if (fbMode) { fbRemoveTask(id); return; }
-    persist({ tasks: state.tasks.filter(t => t.id !== id) });
-  }, [state.tasks, persist, fbMode]);
+    setTasks(prev => prev.filter(t => t.id !== id));
+    persist();
+  }, [fbMode, persist]);
 
   const value: Ctx = {
-    ...state, tab, setTab,
+    groups, members, subjects, tasks,
+    tab, setTab,
+    currentGroupId, setCurrentGroupId, addGroup,
     addMember, updateMember, removeMember,
     addSubject, updateSubject, removeSubject,
     addTask, updateTask, removeTask,

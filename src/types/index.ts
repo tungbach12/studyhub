@@ -1,13 +1,21 @@
+export interface Group {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface Member {
   id: string;
   name: string;
-  schedule: boolean[]; // 7 days * 24 hours = 168 slots. true = free, false = busy
+  schedule: boolean[];
+  groupId: string;
 }
 
 export interface Subject {
   id: string;
   name: string;
   color: string;
+  groupId: string;
 }
 
 export type TaskStatus = 'todo' | 'doing' | 'done';
@@ -21,6 +29,7 @@ export interface Task {
   assigneeId: string | null;
   deadline: string | null;
   createdAt: string;
+  groupId: string;
 }
 
 export type Tab =

@@ -4,10 +4,12 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
+  query,
+  where,
   type Unsubscribe,
 } from 'firebase/firestore';
-import { getDb, hasFirebaseConfig } from './firebase';
-import type { Member, Subject, Task } from '../types';
+import { getDb } from './firebase';
+import type { Member, Subject, Task, Group } from '../types';
 
 function assertDb() {
   const db = getDb();
@@ -15,12 +17,35 @@ function assertDb() {
   return db;
 }
 
-// ─── Subscribe helpers ───
+// ─── Groups ───
 
-export function subscribeMembers(onData: (items: Member[]) => void): Unsubscribe | null {
+export function subscribeGroups(onData: (items: Group[]) => void): Unsubscribe | null {
   const db = getDb();
   if (!db) return null;
-  return onSnapshot(collection(db, 'members'), snap => {
+  return onSnapshot(collection(db, 'groups'), snap => {
+    const list: Group[] = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() } as Group));
+    onData(list);
+  });
+}
+
+export async function setGroup(group: Group) {
+  const db = assertDb();
+  await setDoc(doc(db, 'groups', group.id), { name: group.name, createdAt: group.createdAt });
+}
+
+export async function removeGroup(id: string) {
+  const db = assertDb();
+  await deleteDoc(doc(db, 'groups', id));
+}
+
+// ─── Subscribe helpers (filtered by groupId) ───
+
+export function subscribeMembers(groupId: string, onData: (items: Member[]) => void): Unsubscribe | null {
+  const db = getDb();
+  if (!db || !groupId) return null;
+  const q = query(collection(db, 'members'), where('groupId', '==', groupId));
+  return onSnapshot(q, snap => {
     const list: Member[] = [];
     snap.forEach(d => {
       const m = { id: d.id, ...d.data() } as Member;
@@ -33,20 +58,22 @@ export function subscribeMembers(onData: (items: Member[]) => void): Unsubscribe
   });
 }
 
-export function subscribeSubjects(onData: (items: Subject[]) => void): Unsubscribe | null {
+export function subscribeSubjects(groupId: string, onData: (items: Subject[]) => void): Unsubscribe | null {
   const db = getDb();
-  if (!db) return null;
-  return onSnapshot(collection(db, 'subjects'), snap => {
+  if (!db || !groupId) return null;
+  const q = query(collection(db, 'subjects'), where('groupId', '==', groupId));
+  return onSnapshot(q, snap => {
     const list: Subject[] = [];
     snap.forEach(d => list.push({ id: d.id, ...d.data() } as Subject));
     onData(list);
   });
 }
 
-export function subscribeTasks(onData: (items: Task[]) => void): Unsubscribe | null {
+export function subscribeTasks(groupId: string, onData: (items: Task[]) => void): Unsubscribe | null {
   const db = getDb();
-  if (!db) return null;
-  return onSnapshot(collection(db, 'tasks'), snap => {
+  if (!db || !groupId) return null;
+  const q = query(collection(db, 'tasks'), where('groupId', '==', groupId));
+  return onSnapshot(q, snap => {
     const list: Task[] = [];
     snap.forEach(d => list.push({ id: d.id, ...d.data() } as Task));
     onData(list);
@@ -71,7 +98,7 @@ export async function removeMember(id: string) {
 
 export async function setSubject(subject: Subject) {
   const db = assertDb();
-  await setDoc(doc(db, 'subjects', subject.id), subject);
+  await setDoc(doc(db, 'subjects', subject.id), { name: subject.name, color: subject.color, groupId: subject.groupId });
 }
 
 export async function removeSubject(id: string) {
@@ -81,14 +108,16 @@ export async function removeSubject(id: string) {
 
 export async function setTask(task: Task) {
   const db = assertDb();
-  await setDoc(doc(db, 'tasks', task.id), task);
-}
-
-export async function updateTaskField(id: string, patch: Partial<Task>) {
-  const db = assertDb();
-  const ref = doc(db, 'tasks', id);
-  const { updateDoc } = await import('firebase/firestore');
-  await updateDoc(ref, patch);
+  await setDoc(doc(db, 'tasks', task.id), {
+    subjectId: task.subjectId,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    assigneeId: task.assigneeId,
+    deadline: task.deadline,
+    createdAt: task.createdAt,
+    groupId: task.groupId,
+  });
 }
 
 export async function removeTask(id: string) {
