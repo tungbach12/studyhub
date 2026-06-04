@@ -1315,6 +1315,13 @@ select:focus {
 }
 .member-sched-hour .hour-start { font-weight: 500; }
 
+/* ─── TASK CARD GRID (for draft/deleted views) ─── */
+.task-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 10px;
+}
+
 /* ─── DRAFT BATCH BAR ─── */
 .draft-batch-bar {
   display: flex;

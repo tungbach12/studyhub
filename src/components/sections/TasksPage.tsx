@@ -374,19 +374,26 @@ export default function TasksPage() {
         </div>
       )}
 
-      <div className="kanban-board" style={viewFilter === 'deleted' ? { opacity: 0.6 } : {}}>
-        {customTitle ? (
-          <KanbanColumn
-            status={viewFilter === 'draft' ? 'draft' : 'done'}
-            tasks={grouped[Object.keys(grouped)[0]]}
-            subjects={subjects}
-            members={members}
-            onUpdate={updateTask}
-            onRemove={softDelete}
-            onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
-          />
-        ) : (
-          (Object.keys(grouped) as ('todo' | 'doing' | 'done')[]).map(status => (
+      {customTitle ? (
+        <div className="task-card-grid" style={viewFilter === 'deleted' ? { opacity: 0.6 } : {}}>
+          {(Object.values(grouped)[0] ?? []).map(t => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              subjects={subjects}
+              members={members}
+              onUpdate={updateTask}
+              onRemove={softDelete}
+              onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
+            />
+          ))}
+          {(Object.values(grouped)[0] ?? []).length === 0 && (
+            <div className="empty">Không có nhiệm vụ nào</div>
+          )}
+        </div>
+      ) : (
+        <div className="kanban-board">
+          {(Object.keys(grouped) as ('todo' | 'doing' | 'done')[]).map(status => (
             <KanbanColumn
               key={status}
               status={status}
@@ -397,9 +404,9 @@ export default function TasksPage() {
               onRemove={softDelete}
               onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
             />
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       <TaskFormModal
         open={modalOpen}
