@@ -1,6 +1,5 @@
 import { useApp } from '../../hooks/useApp';
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useRef } from 'react';
 
 const IconHome = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,6 +52,11 @@ const IconChevronDown = () => (
     <polyline points="6 9 12 15 18 9" />
   </svg>
 );
+const IconPencil = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
 
 const tabs = [
   { id: 'dashboard' as const, label: 'Tổng quan', Icon: IconHome },
@@ -63,10 +67,25 @@ const tabs = [
 ];
 
 export default function AppSidebar() {
-  const { tab, setTab, online, groups, currentGroupId, setCurrentGroupId, addGroup } = useApp();
+  const { tab, setTab, online, groups, currentGroupId, setCurrentGroupId, addGroup, updateGroup } = useApp();
   const [groupOpen, setGroupOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const fbMode = typeof import.meta !== 'undefined' && import.meta.env.VITE_FIREBASE_PROJECT_ID;
+
+  const handleEdit = (g: typeof groups[0]) => {
+    setEditingId(g.id);
+    setEditName(g.name);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const saveEdit = (id: string) => {
+    const t = editName.trim();
+    if (t) updateGroup(id, { name: t });
+    setEditingId(null);
+  };
 
   return (
     <aside className="sidebar">
@@ -80,14 +99,27 @@ export default function AppSidebar() {
         {groupOpen && (
           <div className="sidebar-group-dropdown">
             {groups.map(g => (
-              <button
-                key={g.id}
-                className={`sidebar-group-item ${g.id === currentGroupId ? 'active' : ''}`}
-                onClick={() => { setCurrentGroupId(g.id); setGroupOpen(false); }}
-                type="button"
-              >
-                {g.name}
-              </button>
+              <div key={g.id} className={`sidebar-group-item ${g.id === currentGroupId ? 'active' : ''}`}>
+                {editingId === g.id ? (
+                  <input
+                    ref={inputRef}
+                    className="sidebar-group-inline-input"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    onBlur={() => saveEdit(g.id)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(g.id); if (e.key === 'Escape') setEditingId(null); }}
+                  />
+                ) : (
+                  <>
+                    <span className="sidebar-group-item-name" onClick={() => { setCurrentGroupId(g.id); setGroupOpen(false); }}>
+                      {g.name}
+                    </span>
+                    <button type="button" className="sidebar-group-edit-btn" onClick={() => handleEdit(g)}>
+                      <IconPencil />
+                    </button>
+                  </>
+                )}
+              </div>
             ))}
             <div className="sidebar-group-divider" />
             <form onSubmit={e => {

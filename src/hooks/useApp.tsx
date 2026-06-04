@@ -26,6 +26,7 @@ type Ctx = State & {
   currentGroupId: string;
   setCurrentGroupId: (id: string) => void;
   addGroup: (name: string) => void;
+  updateGroup: (id: string, patch: Partial<Group>) => void;
   addMember: (name: string) => void;
   updateMember: (id: string, patch: Partial<Member>) => void;
   removeMember: (id: string) => void;
@@ -124,6 +125,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     persist();
   }, [fbMode, persist]);
 
+  const updateGroup = useCallback((id: string, patch: Partial<Group>) => {
+    if (fbMode) {
+      const existing = groups.find(g => g.id === id);
+      if (existing) fbSetGroup({ ...existing, ...patch });
+      return;
+    }
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, ...patch } : g));
+    persist();
+  }, [groups, fbMode, persist]);
+
   // ─── Member mutations ───
   const addMember = useCallback((name: string) => {
     if (!currentGroupId) return;
@@ -202,7 +213,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     groups, members, subjects, tasks,
     tab, setTab,
-    currentGroupId, setCurrentGroupId, addGroup,
+    currentGroupId, setCurrentGroupId, addGroup, updateGroup,
     addMember, updateMember, removeMember,
     addSubject, updateSubject, removeSubject,
     addTask, updateTask, removeTask,
