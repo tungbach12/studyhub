@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, X, Image, Loader2, Check, AlertCircle } from 'lucide-react';
+import { Upload, FileText, X, Image, Loader2, Check, AlertCircle, Plus } from 'lucide-react';
 import { useApp } from '../../hooks/useApp';
 import { parseTasksFromText, parseTasksFromImage } from '../../lib/ai';
 import * as XLSX from 'xlsx';
@@ -35,7 +35,7 @@ export default function ImportModal({
   onClose: () => void;
   onImport: (tasks: { title: string; description: string; subjectId: string; assigneeId: string | null; deadline: string | null; status: 'todo' | 'draft' }[]) => void;
 }) {
-  const { members, subjects } = useApp();
+  const { members, subjects, addSubject } = useApp();
   const [step, setStep] = useState<Step>('input');
   const [inputMode, setInputMode] = useState<'text' | 'file'>('text');
   const [text, setText] = useState('');
@@ -212,6 +212,27 @@ export default function ImportModal({
                     <span>Chọn tất cả ({tasks.filter(t => t._selected).length}/{tasks.length})</span>
                   </label>
                 </div>
+
+                {(() => {
+                  const uncategorized = tasks.filter(t => !t.subjectName && t._selected);
+                  if (uncategorized.length === 0) return null;
+                  return <UncategorizedBar
+                    count={uncategorized.length}
+                    subjects={subjects}
+                    onApply={(subjectName: string) => {
+                      const existing = subjects.find(s => s.name === subjectName);
+                      if (!existing) {
+                        const colors = ['#6b5bff', '#ff6b6b', '#51cf66', '#ff922b', '#339af0', '#cc5de8', '#20c997', '#f06595'];
+                        const color = colors[Object.keys(subjects).length % colors.length];
+                        addSubject(subjectName, color);
+                      }
+                      setTasks(prev => prev.map(t =>
+                        !t.subjectName && t._selected ? { ...t, subjectName } : t
+                      ));
+                    }}
+                  />;
+                })()}
+
                 <div className="import-review-list">
                   {tasks.map(t => (
                     <div key={t._key} className={`import-review-row ${t._selected ? '' : 'dim'}`}>
@@ -278,6 +299,47 @@ export default function ImportModal({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function UncategorizedBar({ count, subjects, onApply }: {
+  count: number;
+  subjects: { id: string; name: string }[];
+  onApply: (name: string) => void;
+}) {
+  const [mode, setMode] = useState<'select' | 'create'>('select');
+  const [selectedId, setSelectedId] = useState('');
+  const [newName, setNewName] = useState('');
+
+  const handleApply = () => {
+    const name = mode === 'select' ? subjects.find(s => s.id === selectedId)?.name : newName.trim();
+    if (!name) return;
+    onApply(name);
+  };
+
+  return (
+    <div className="import-uncategorized-bar">
+      <span className="import-uncategorized-label">
+        {count} nhiệm vụ chưa có danh mục
+      </span>
+      <div className="import-uncategorized-controls">
+        <div className="import-uncategorized-tabs">
+          <button type="button" className={`import-tab-sm ${mode === 'select' ? 'active' : ''}`} onClick={() => setMode('select')}>Chọn</button>
+          <button type="button" className={`import-tab-sm ${mode === 'create' ? 'active' : ''}`} onClick={() => setMode('create')}>Tạo mới</button>
+        </div>
+        {mode === 'select' ? (
+          <select className="modal-input" value={selectedId} onChange={e => setSelectedId(e.target.value)}>
+            <option value="">-- Chọn danh mục --</option>
+            {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        ) : (
+          <input className="modal-input" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nhập tên danh mục mới" />
+        )}
+        <button type="button" className="btn btn-primary btn-xs" onClick={handleApply} disabled={mode === 'select' ? !selectedId : !newName.trim()}>
+          <Plus size={14} /> Áp dụng
+        </button>
       </div>
     </div>
   );
