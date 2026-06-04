@@ -1289,6 +1289,14 @@ select:focus {
 }
 .member-sched-hour .hour-start { font-weight: 500; }
 
+/* ─── VIEW FILTER ─── */
+.view-filter {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
 /* ─── TASK ACTIONS ─── */
 .add-task-actions {
   display: flex;

@@ -232,13 +232,15 @@ function KanbanColumn({
   );
 }
 
+type ViewFilter = 'active' | 'draft' | 'deleted';
+
 export default function TasksPage() {
   const { tasks, subjects, members, addTask, updateTask, removeTask } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [filterAssignee, setFilterAssignee] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [viewFilter, setViewFilter] = useState<ViewFilter>('active');
 
   const handleImport = (items: { title: string; description: string; subjectId: string; assigneeId: string | null; deadline: string | null; status: 'todo' | 'draft' }[]) => {
     const now = new Date().toISOString();
@@ -251,15 +253,23 @@ export default function TasksPage() {
     ? tasks.filter(t => t.assigneeId === filterAssignee)
     : tasks;
 
-  const activeTasks = visibleTasks.filter(t => !t.deleted);
-  const deletedTasks = visibleTasks.filter(t => t.deleted);
+  let grouped: Record<string, Task[]>;
+  let customTitle = '';
 
-  const grouped = {
-    draft: activeTasks.filter(t => t.status === 'draft'),
-    todo: activeTasks.filter(t => t.status === 'todo'),
-    doing: activeTasks.filter(t => t.status === 'doing'),
-    done: activeTasks.filter(t => t.status === 'done'),
-  };
+  if (viewFilter === 'draft') {
+    grouped = { draft: visibleTasks.filter(t => !t.deleted && t.status === 'draft') };
+    customTitle = 'Nháp';
+  } else if (viewFilter === 'deleted') {
+    grouped = { deleted: visibleTasks.filter(t => t.deleted) };
+    customTitle = 'Đã xóa';
+  } else {
+    const active = visibleTasks.filter(t => !t.deleted && t.status !== 'draft');
+    grouped = {
+      todo: active.filter(t => t.status === 'todo'),
+      doing: active.filter(t => t.status === 'doing'),
+      done: active.filter(t => t.status === 'done'),
+    };
+  }
 
   const handleSave = (data: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
     if (editTask) {
@@ -291,82 +301,88 @@ export default function TasksPage() {
       </div>
 
       <div className="stat-row">
-        <div className="stat-card"><div className="stat-value" style={{ color: '#94a3b8' }}>{tasks.filter(t => !t.deleted).length}</div><div className="stat-label">Đang làm</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#666' }}>{grouped.draft.length}</div><div className="stat-label">Nháp</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#818cf8' }}>{grouped.doing.length}</div><div className="stat-label">Đang học</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#22c55e' }}>{grouped.done.length}</div><div className="stat-label">Hoàn thành</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#94a3b8' }}>{tasks.filter(t => !t.deleted && t.status !== 'draft').length}</div><div className="stat-label">Đang làm</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#666' }}>{tasks.filter(t => !t.deleted && t.status === 'draft').length}</div><div className="stat-label">Nháp</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#818cf8' }}>{tasks.filter(t => !t.deleted && t.status === 'doing').length}</div><div className="stat-label">Đang học</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#22c55e' }}>{tasks.filter(t => !t.deleted && t.status === 'done').length}</div><div className="stat-label">Hoàn thành</div></div>
       </div>
 
-      <div className="assignee-filter">
+      <div className="view-filter">
         <button
-          className={`assignee-chip${filterAssignee === null ? ' active' : ''}`}
-          onClick={() => setFilterAssignee(null)}
+          className={`view-chip${viewFilter === 'active' ? ' active' : ''}`}
+          onClick={() => setViewFilter('active')}
         >
-          <span className="assignee-avatar-all">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
-          </span>
-          Tất cả
-          <span className="assignee-count">{tasks.filter(t => !t.deleted).length}</span>
+          Đang làm
         </button>
-        {members.map(m => {
-          const count = tasks.filter(t => t.assigneeId === m.id && !t.deleted).length;
-          return (
-            <button
-              key={m.id}
-              className={`assignee-chip${filterAssignee === m.id ? ' active' : ''}`}
-              onClick={() => setFilterAssignee(m.id === filterAssignee ? null : m.id)}
-            >
-              <span className="assignee-avatar">{m.name.charAt(0)}</span>
-              {m.name}
-              <span className="assignee-count">{count}</span>
-            </button>
-          );
-        })}
         <button
-          className={`assignee-chip${showDeleted ? ' active' : ''}`}
-          onClick={() => setShowDeleted(!showDeleted)}
-          style={showDeleted ? {} : { borderColor: '#333' }}
+          className={`view-chip${viewFilter === 'draft' ? ' active' : ''}`}
+          onClick={() => setViewFilter('draft')}
         >
-          <Trash2 size={14} />
-          Đã xóa
-          <span className="assignee-count">{deletedTasks.length}</span>
+          Nháp <span className="assignee-count">{tasks.filter(t => !t.deleted && t.status === 'draft').length}</span>
+        </button>
+        <button
+          className={`view-chip${viewFilter === 'deleted' ? ' active' : ''}`}
+          onClick={() => setViewFilter('deleted')}
+        >
+          <Trash2 size={14} /> Đã xóa <span className="assignee-count">{tasks.filter(t => t.deleted).length}</span>
         </button>
       </div>
 
-      <div className="kanban-board">
-        {(Object.keys(grouped) as TaskStatus[]).map(status => (
+      {viewFilter === 'active' && (
+        <div className="assignee-filter">
+          <button
+            className={`assignee-chip${filterAssignee === null ? ' active' : ''}`}
+            onClick={() => setFilterAssignee(null)}
+          >
+            <span className="assignee-avatar-all">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+            </span>
+            Tất cả
+            <span className="assignee-count">{tasks.filter(t => !t.deleted && t.status !== 'draft').length}</span>
+          </button>
+          {members.map(m => {
+            const count = tasks.filter(t => t.assigneeId === m.id && !t.deleted && t.status !== 'draft').length;
+            return (
+              <button
+                key={m.id}
+                className={`assignee-chip${filterAssignee === m.id ? ' active' : ''}`}
+                onClick={() => setFilterAssignee(m.id === filterAssignee ? null : m.id)}
+              >
+                <span className="assignee-avatar">{m.name.charAt(0)}</span>
+                {m.name}
+                <span className="assignee-count">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="kanban-board" style={viewFilter === 'deleted' ? { opacity: 0.6 } : {}}>
+        {customTitle ? (
           <KanbanColumn
-            key={status}
-            status={status}
-            tasks={grouped[status]}
+            status={viewFilter === 'draft' ? 'draft' : 'done'}
+            tasks={grouped[Object.keys(grouped)[0]]}
             subjects={subjects}
             members={members}
             onUpdate={updateTask}
             onRemove={softDelete}
             onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
           />
-        ))}
-      </div>
-
-      {showDeleted && deletedTasks.length > 0 && (
-        <>
-          <div style={{ marginTop: 28, marginBottom: 12, fontWeight: 600, fontSize: 14, color: '#666', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Trash2 size={16} /> Đã xóa ({deletedTasks.length})
-          </div>
-          <div className="kanban-board" style={{ opacity: 0.6 }}>
+        ) : (
+          (Object.keys(grouped) as ('todo' | 'doing' | 'done')[]).map(status => (
             <KanbanColumn
-              status="draft"
-              tasks={deletedTasks}
+              key={status}
+              status={status}
+              tasks={grouped[status]}
               subjects={subjects}
               members={members}
               onUpdate={updateTask}
               onRemove={softDelete}
               onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
-              compact
             />
-          </div>
-        </>
-      )}
+          ))
+        )}
+      </div>
 
       <TaskFormModal
         open={modalOpen}
