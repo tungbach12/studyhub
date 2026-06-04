@@ -1,7 +1,7 @@
 import { useApp } from '../../hooks/useApp';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { TaskStatus, Task } from '../../types';
-import { PlusCircle, Trash2, CalendarDays, User, ArrowRight, ArrowLeft, X, Clock, CheckCircle2, Circle, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowRight, ArrowLeft, X, Circle, Loader2, CheckCircle2 } from 'lucide-react';
 
 const STATUSES: { key: TaskStatus; label: string; icon: typeof Circle }[] = [
   { key: 'todo', label: 'Cần làm', icon: Circle },
@@ -21,12 +21,14 @@ function TaskCard({
   members,
   onUpdate,
   onRemove,
+  onEdit,
 }: {
   task: Task;
   subjects: ReturnType<typeof useApp>['subjects'];
   members: ReturnType<typeof useApp>['members'];
   onUpdate: (id: string, patch: Partial<Task>) => void;
   onRemove: (id: string) => void;
+  onEdit: (task: Task) => void;
 }) {
   const sub = subjects.find(s => s.id === task.subjectId);
   const mem = members.find(m => m.id === task.assigneeId);
@@ -42,7 +44,10 @@ function TaskCard({
       <div className="task-card-body">
         <div className="task-card-header">
           <span className="task-card-subject" style={{ background: color }}>{sub?.name ?? 'Môn'}</span>
-          <button type="button" onClick={() => onRemove(task.id)} className="task-card-delete"><Trash2 size={14} /></button>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button type="button" onClick={() => onEdit(task)} className="task-card-delete" title="Sửa"><Pencil size={14} /></button>
+            <button type="button" onClick={() => onRemove(task.id)} className="task-card-delete"><Trash2 size={14} /></button>
+          </div>
         </div>
         <div className="task-card-title">{task.title}</div>
         {task.description && <div className="task-card-desc">{task.description}</div>}
@@ -77,18 +82,20 @@ function TaskCard({
   );
 }
 
-function AddTaskModal({
+function TaskFormModal({
   open,
+  editTask,
   onClose,
   subjects,
   members,
-  onAdd,
+  onSave,
 }: {
   open: boolean;
+  editTask: Task | null;
   onClose: () => void;
   subjects: ReturnType<typeof useApp>['subjects'];
   members: ReturnType<typeof useApp>['members'];
-  onAdd: (task: Omit<Task, 'id'>) => void;
+  onSave: (data: Omit<Task, 'id' | 'status' | 'createdAt'>) => void;
 }) {
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '');
@@ -96,24 +103,32 @@ function AddTaskModal({
   const [deadline, setDeadline] = useState('');
   const [desc, setDesc] = useState('');
 
+  const isEditing = editTask !== null;
+
+  useEffect(() => {
+    if (open) {
+      setTitle(editTask?.title ?? '');
+      setSubjectId(editTask?.subjectId ?? subjects[0]?.id ?? '');
+      setAssigneeId(editTask?.assigneeId ?? members[0]?.id ?? '');
+      setDeadline(editTask?.deadline ?? '');
+      setDesc(editTask?.description ?? '');
+    }
+  }, [open, editTask, subjects, members]);
+
   if (!open) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    onAdd({
+    onSave({
       subjectId,
       title: t,
       description: desc,
-      status: 'todo',
       assigneeId: assigneeId || null,
       deadline: deadline || null,
-      createdAt: new Date().toISOString(),
     });
-    setTitle('');
-    setDesc('');
-    setDeadline('');
+    setTitle(''); setDesc(''); setDeadline('');
     onClose();
   };
 
@@ -121,7 +136,7 @@ function AddTaskModal({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Thêm nhiệm vụ</h2>
+          <h2>{isEditing ? 'Sửa nhiệm vụ' : 'Thêm nhiệm vụ'}</h2>
           <button type="button" onClick={onClose} className="modal-close"><X size={18} /></button>
         </div>
         <form className="modal-form" onSubmit={handleSubmit}>
@@ -147,7 +162,7 @@ function AddTaskModal({
 
           <div className="modal-actions">
             <button type="button" onClick={onClose} className="btn">Huỷ</button>
-            <button type="submit" className="btn btn-primary"><PlusCircle size={16} /> Tạo nhiệm vụ</button>
+            <button type="submit" className="btn btn-primary"><PlusCircle size={16} /> {isEditing ? 'Lưu' : 'Tạo nhiệm vụ'}</button>
           </div>
         </form>
       </div>
@@ -162,10 +177,16 @@ function KanbanColumn({
   members,
   onUpdate,
   onRemove,
+  onEdit,
 }: {
   status: TaskStatus;
   tasks: Task[];
-} & Omit<Parameters<typeof TaskCard>[0], 'task'>) {
+  subjects: ReturnType<typeof useApp>['subjects'];
+  members: ReturnType<typeof useApp>['members'];
+  onUpdate: (id: string, patch: Partial<Task>) => void;
+  onRemove: (id: string) => void;
+  onEdit: (task: Task) => void;
+}) {
   const label = STATUSES.find(s => s.key === status)!.label;
   const Icon = STATUSES.find(s => s.key === status)!.icon;
   const color = STATUS_COLORS[status];
@@ -186,6 +207,7 @@ function KanbanColumn({
             members={members}
             onUpdate={onUpdate}
             onRemove={onRemove}
+            onEdit={onEdit}
           />
         ))}
         {tasks.length === 0 && (
@@ -199,6 +221,7 @@ function KanbanColumn({
 export default function TasksPage() {
   const { tasks, subjects, members, addTask, updateTask, removeTask } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
   const [filterAssignee, setFilterAssignee] = useState<string | null>(null);
 
   const visibleTasks = filterAssignee
@@ -211,6 +234,14 @@ export default function TasksPage() {
     done: visibleTasks.filter(t => t.status === 'done'),
   } as const;
 
+  const handleSave = (data: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
+    if (editTask) {
+      updateTask(editTask.id, { ...data, status: editTask.status });
+    } else {
+      addTask({ ...data, status: 'todo', createdAt: new Date().toISOString() });
+    }
+  };
+
   return (
     <div className="page">
       <div className="page-header-row">
@@ -218,7 +249,7 @@ export default function TasksPage() {
           <h1>Nhiệm vụ</h1>
           <p>Bảng Kanban — kéo thả hoặc dùng nút để cập nhật trạng thái</p>
         </div>
-        <button className="btn btn-primary add-task-btn" onClick={() => setModalOpen(true)}>
+        <button className="btn btn-primary add-task-btn" onClick={() => { setEditTask(null); setModalOpen(true); }}>
           <PlusCircle size={18} /> Thêm nhiệm vụ
         </button>
       </div>
@@ -266,16 +297,18 @@ export default function TasksPage() {
             members={members}
             onUpdate={updateTask}
             onRemove={removeTask}
+            onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
           />
         ))}
       </div>
 
-      <AddTaskModal
+      <TaskFormModal
         open={modalOpen}
+        editTask={editTask}
         onClose={() => setModalOpen(false)}
         subjects={subjects}
         members={members}
-        onAdd={addTask}
+        onSave={handleSave}
       />
     </div>
   );

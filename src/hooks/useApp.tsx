@@ -25,6 +25,7 @@ type Ctx = State & {
   updateMember: (id: string, patch: Partial<Member>) => void;
   removeMember: (id: string) => void;
   addSubject: (name: string, color: string) => void;
+  updateSubject: (id: string, patch: Partial<Subject>) => void;
   removeSubject: (id: string) => void;
   addTask: (t: Omit<Task, 'id'>) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
@@ -108,6 +109,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     persist({ subjects: [...state.subjects, s] });
   }, [state.subjects, persist, fbMode]);
 
+  const updateSubject = useCallback((id: string, patch: Partial<Subject>) => {
+    if (fbMode) {
+      const existing = state.subjects.find(s => s.id === id);
+      if (existing) fbSetSubject({ ...existing, ...patch });
+      return;
+    }
+    persist({ subjects: state.subjects.map(s => s.id === id ? { ...s, ...patch } : s) });
+  }, [state.subjects, persist, fbMode]);
+
   const removeSubject = useCallback((id: string) => {
     if (fbMode) { fbRemoveSubject(id); return; }
     persist({ subjects: state.subjects.filter(s => s.id !== id) });
@@ -136,7 +146,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const value: Ctx = {
     ...state, tab, setTab,
     addMember, updateMember, removeMember,
-    addSubject, removeSubject,
+    addSubject, updateSubject, removeSubject,
     addTask, updateTask, removeTask,
     online,
   };
