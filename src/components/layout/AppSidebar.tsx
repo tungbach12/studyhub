@@ -66,7 +66,7 @@ const tabs = [
   { id: 'tasks' as const, label: 'Nhiệm vụ', Icon: IconTask },
 ];
 
-export default function AppSidebar() {
+export default function AppSidebar({ onClose }: { onClose?: () => void }) {
   const { tab, setTab, online, groups, currentGroupId, setCurrentGroupId, addGroup, updateGroup } = useApp();
   const [groupOpen, setGroupOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -147,7 +147,7 @@ export default function AppSidebar() {
           <button
             key={id}
             className={`sidebar-link ${tab === id ? 'active' : ''}`}
-            onClick={() => setTab(id)}
+            onClick={() => { setTab(id); onClose?.(); }}
             type="button"
           >
             <Icon />

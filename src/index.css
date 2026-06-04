@@ -1427,3 +1427,158 @@ select:focus {
   font-size: 11px;
   color: var(--color-muted);
 }
+
+/* ─── MOBILE RESPONSIVE ─── */
+.sidebar-desktop { display: block; }
+@media (max-width: 768px) {
+  .sidebar-desktop { display: none; }
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 80;
+}
+@media (max-width: 768px) {
+  .mobile-overlay.show { display: block; }
+}
+
+.mobile-sidebar {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  overflow-y: auto;
+}
+.mobile-sidebar .sidebar {
+  display: flex;
+  width: 280px;
+  min-height: 100vh;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-direction: column;
+}
+.mobile-sidebar-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 10px 0;
+  background: var(--color-surface);
+}
+@media (min-width: 769px) {
+  .mobile-sidebar,
+  .mobile-sidebar-header { display: none; }
+}
+.mobile-close-btn {
+  background: none;
+  border: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-close-btn:hover { background: #ffffff10; color: var(--color-text); }
+
+.mobile-topbar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+@media (max-width: 768px) {
+  .mobile-topbar { display: flex; }
+}
+.mobile-hamburger {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 120ms;
+}
+.mobile-hamburger:hover { border-color: #444; color: var(--color-text); }
+.mobile-group-name {
+  font-weight: 700;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── SCHEDULE MOBILE ─── */
+@media (max-width: 768px) {
+  .heatmap-grid,
+  .member-sched-grid {
+    min-width: 500px;
+  }
+  .sched-heatmap,
+  .member-schedule-card {
+    margin: 0 -4px;
+    border-radius: var(--radius-sm);
+  }
+  .heatmap-grid { grid-template-columns: 44px repeat(7, 1fr); gap: 3px; }
+  .member-sched-grid { grid-template-columns: 44px repeat(7, 1fr); gap: 3px; }
+  .heatmap-day { font-size: 11px; padding: 8px 2px 6px; }
+  .member-sched-day { font-size: 10px; padding: 6px 2px; }
+  .cell-lg { min-width: 36px; min-height: 32px; }
+}
+
+/* ─── MODAL MOBILE ─── */
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .modal {
+    max-width: 100%;
+    max-height: 85vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .modal-header,
+  .modal-form {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .modal-form { padding-bottom: 28px; }
+}
+
+/* ─── DASHBOARD MOBILE ─── */
+@media (max-width: 768px) {
+  .dash-grid { gap: 12px; }
+  .dash-card-body { padding: 12px; }
+  .workload-info { min-width: 100px; }
+}
+
+/* ─── MEMBER GRID MOBILE ─── */
+@media (max-width: 600px) {
+  .members-grid { grid-template-columns: 1fr; }
+}
+
+/* ─── SUBJECT LIST MOBILE ─── */
+@media (max-width: 600px) {
+  .subject-list { grid-template-columns: 1fr; }
+}
+
+/* ─── PAGE HEADER MOBILE ─── */
+@media (max-width: 768px) {
+  .page { padding-top: 0; }
+  .page-header h1 { font-size: 24px; }
+  .page-header p { font-size: 13px; }
+  .stat-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-value { font-size: 22px; }
+}
+
+/* ─── TASK CARD MOBILE ─── */
+@media (max-width: 600px) {
+  .task-card-body { padding: 10px; }
+  .task-card-title { font-size: 13px; }
+}
