@@ -40,21 +40,24 @@ async function callNVIDIA(body: object): Promise<string> {
   return msg.content;
 }
 
+const BASE_PARAMS = {
+  temperature: 1.00,
+  max_tokens: 16384,
+  top_p: 0.95,
+  model: 'stepfun-ai/step-3.7-flash',
+};
+
 export async function parseTasksFromText(raw: string): Promise<RawTask[]> {
   const content = await callNVIDIA({
-    model: 'moonshotai/kimi-k2.6',
+    ...BASE_PARAMS,
     messages: [{ role: 'user', content: buildPrompt(raw) }],
-    temperature: 0.2,
-    max_tokens: 4096,
-    top_p: 1.00,
-    chat_template_kwargs: { thinking: true },
   });
   return parseJSON(content);
 }
 
 export async function parseTasksFromImage(base64: string): Promise<RawTask[]> {
   const content = await callNVIDIA({
-    model: 'moonshotai/kimi-k2.6',
+    ...BASE_PARAMS,
     messages: [
       {
         role: 'user',
@@ -64,10 +67,6 @@ export async function parseTasksFromImage(base64: string): Promise<RawTask[]> {
         ],
       },
     ],
-    temperature: 0.2,
-    max_tokens: 4096,
-    top_p: 1.00,
-    chat_template_kwargs: { thinking: true },
   });
   return parseJSON(content);
 }

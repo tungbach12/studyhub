@@ -1315,6 +1315,17 @@ select:focus {
 }
 .member-sched-hour .hour-start { font-weight: 500; }
 
+/* ─── DRAFT BATCH BAR ─── */
+.draft-batch-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
 /* ─── VIEW FILTER ─── */
 .view-filter {
   display: flex;

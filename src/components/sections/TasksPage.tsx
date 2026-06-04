@@ -358,6 +358,22 @@ export default function TasksPage() {
       </div>
       )}
 
+      {customTitle && viewFilter === 'draft' && grouped.draft.length > 0 && (
+        <div className="draft-batch-bar">
+          <button className="btn btn-sm btn-primary" onClick={() => {
+            grouped.draft.forEach(t => updateTask(t.id, { status: 'todo' }));
+          }}>
+            Chuyển qua cần làm hết
+          </button>
+          <button className="btn btn-sm btn-danger" onClick={() => {
+            const now = new Date().toISOString();
+            grouped.draft.forEach(t => updateTask(t.id, { deleted: true, deletedAt: now }));
+          }}>
+            Xóa hết
+          </button>
+        </div>
+      )}
+
       <div className="kanban-board" style={viewFilter === 'deleted' ? { opacity: 0.6 } : {}}>
         {customTitle ? (
           <KanbanColumn
