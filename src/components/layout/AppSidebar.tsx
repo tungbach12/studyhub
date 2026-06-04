@@ -62,7 +62,7 @@ const tabs = [
   { id: 'dashboard' as const, label: 'Tổng quan', Icon: IconHome },
   { id: 'members' as const, label: 'Thành viên', Icon: IconUsers },
   { id: 'schedule' as const, label: 'Lịch học', Icon: IconCal },
-  { id: 'subjects' as const, label: 'Môn học', Icon: IconBook },
+  { id: 'subjects' as const, label: 'Danh mục', Icon: IconBook },
   { id: 'tasks' as const, label: 'Nhiệm vụ', Icon: IconTask },
 ];
 

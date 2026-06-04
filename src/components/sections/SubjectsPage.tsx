@@ -30,14 +30,14 @@ export default function SubjectsPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Môn học</h1>
-        <p>Thêm môn học để phân loại nhiệm vụ</p>
+        <h1>Danh mục</h1>
+        <p>Thêm danh mục để phân loại nhiệm vụ</p>
       </div>
       <form className="add-bar" onSubmit={handleSubmit}>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="Tên môn học"
+          placeholder="Tên danh mục"
         />
         <div className="color-picks">
           {COLORS.map(c => (
@@ -104,7 +104,7 @@ export default function SubjectsPage() {
         </div>
       )}
       {subjects.length === 0 && (
-        <div className="empty">Chưa có môn học nào. Thêm môn học để bắt đầu.</div>
+        <div className="empty">Chưa có danh mục nào. Thêm danh mục để bắt đầu.</div>
       )}
     </div>
   );

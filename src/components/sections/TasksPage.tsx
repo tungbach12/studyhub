@@ -145,7 +145,7 @@ function TaskFormModal({
           <label className="modal-label">Tiêu đề <span className="req">*</span></label>
           <input className="modal-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="VD: Ôn tập chương 3" autoFocus />
 
-          <label className="modal-label">Môn học</label>
+          <label className="modal-label">Danh mục</label>
           <select className="modal-input" value={subjectId} onChange={e => setSubjectId(e.target.value)}>
             {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
