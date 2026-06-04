@@ -30,6 +30,8 @@ export interface Task {
   deadline: string | null;
   createdAt: string;
   groupId: string;
+  deleted: boolean;
+  deletedAt: string | null;
 }
 
 export type Tab =

@@ -1,16 +1,17 @@
 import { useApp } from '../../hooks/useApp';
 import { useState, useEffect } from 'react';
-import type { TaskStatus, Task } from '../../types';
-import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowRight, ArrowLeft, X, Circle, Loader2, CheckCircle2, Upload } from 'lucide-react';
+import type { Task, TaskStatus } from '../../types';
+import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowRight, ArrowLeft, X, Circle, Loader2, CheckCircle2, Upload, EyeOff, Eye, RotateCcw } from 'lucide-react';
 import ImportModal from './ImportModal';
 
 const STATUSES: { key: TaskStatus; label: string; icon: typeof Circle }[] = [
+  { key: 'draft', label: 'Nháp', icon: EyeOff },
   { key: 'todo', label: 'Cần làm', icon: Circle },
   { key: 'doing', label: 'Đang làm', icon: Loader2 },
   { key: 'done', label: 'Hoàn thành', icon: CheckCircle2 },
 ];
 
-const STATUS_COLORS: Record<TaskStatus, string> = {
+const STATUS_COLORS: Record<string, string> = {
   draft: '#666',
   todo: '#94a3b8',
   doing: '#818cf8',
@@ -48,10 +49,14 @@ function TaskCard({
           <span className="task-card-subject" style={{ background: color }}>{sub?.name ?? 'Môn'}</span>
           <div style={{ display: 'flex', gap: 4 }}>
             <button type="button" onClick={() => onEdit(task)} className="task-card-delete" title="Sửa"><Pencil size={14} /></button>
-            <button type="button" onClick={() => onRemove(task.id)} className="task-card-delete"><Trash2 size={14} /></button>
+            {task.deleted ? (
+              <button type="button" onClick={() => onUpdate(task.id, { deleted: false, deletedAt: null })} className="task-card-delete" title="Khôi phục" style={{ color: '#22c55e' }}><RotateCcw size={14} /></button>
+            ) : (
+              <button type="button" onClick={() => onRemove(task.id)} className="task-card-delete" title="Xóa"><Trash2 size={14} /></button>
+            )}
           </div>
         </div>
-        <div className="task-card-title">{task.title}</div>
+        <div className="task-card-title" style={task.deleted ? { textDecoration: 'line-through', opacity: 0.5 } : {}}>{task.title}</div>
         {task.description && <div className="task-card-desc">{task.description}</div>}
         <div className="task-card-meta">
           {mem && (
@@ -131,6 +136,8 @@ function TaskFormModal({
       assigneeId: assigneeId || null,
       deadline: deadline || null,
       groupId: currentGroupId,
+      deleted: false,
+      deletedAt: null,
     });
     setTitle(''); setDesc(''); setDeadline('');
     onClose();
@@ -182,6 +189,7 @@ function KanbanColumn({
   onUpdate,
   onRemove,
   onEdit,
+  compact,
 }: {
   status: TaskStatus;
   tasks: Task[];
@@ -190,13 +198,15 @@ function KanbanColumn({
   onUpdate: (id: string, patch: Partial<Task>) => void;
   onRemove: (id: string) => void;
   onEdit: (task: Task) => void;
+  compact?: boolean;
 }) {
-  const label = STATUSES.find(s => s.key === status)!.label;
-  const Icon = STATUSES.find(s => s.key === status)!.icon;
-  const color = STATUS_COLORS[status];
+  const entry = STATUSES.find(s => s.key === status);
+  const label = entry?.label ?? status;
+  const Icon = entry?.icon ?? Circle;
+  const color = STATUS_COLORS[status] ?? '#666';
 
   return (
-    <div className="kanban-col">
+    <div className={`kanban-col${compact ? ' kanban-col-compact' : ''}`}>
       <div className="kanban-col-header">
         <Icon size={16} style={{ color }} />
         <span className="kanban-col-title">{label}</span>
@@ -215,7 +225,7 @@ function KanbanColumn({
           />
         ))}
         {tasks.length === 0 && (
-          <div className="kanban-empty">{label === 'Cần làm' ? 'Chưa có nhiệm vụ nào. Nhấn "Thêm" để bắt đầu.' : 'Kéo thả hoặc dùng nút để chuyển task qua.'}</div>
+          <div className="kanban-empty">{label === 'Cần làm' ? 'Chưa có nhiệm vụ nào' : 'Không có task'}</div>
         )}
       </div>
     </div>
@@ -228,11 +238,12 @@ export default function TasksPage() {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [filterAssignee, setFilterAssignee] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const handleImport = (items: { title: string; description: string; subjectId: string; assigneeId: string | null; deadline: string | null; status: 'todo' | 'draft' }[]) => {
     const now = new Date().toISOString();
     items.forEach(t => {
-      addTask({ ...t, createdAt: now, groupId: '' });
+      addTask({ ...t, createdAt: now, groupId: '', deleted: false, deletedAt: null });
     });
   };
 
@@ -240,21 +251,26 @@ export default function TasksPage() {
     ? tasks.filter(t => t.assigneeId === filterAssignee)
     : tasks;
 
-  const draftTasks = tasks.filter(t => t.status === 'draft');
-  const activeTasks = visibleTasks.filter(t => t.status !== 'draft');
+  const activeTasks = visibleTasks.filter(t => !t.deleted);
+  const deletedTasks = visibleTasks.filter(t => t.deleted);
 
   const grouped = {
+    draft: activeTasks.filter(t => t.status === 'draft'),
     todo: activeTasks.filter(t => t.status === 'todo'),
     doing: activeTasks.filter(t => t.status === 'doing'),
     done: activeTasks.filter(t => t.status === 'done'),
-  } as const;
+  };
 
   const handleSave = (data: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
     if (editTask) {
       updateTask(editTask.id, { ...data, status: editTask.status });
     } else {
-      addTask({ ...data, status: 'todo', createdAt: new Date().toISOString() });
+      addTask({ ...data, status: 'todo', createdAt: new Date().toISOString(), deleted: false, deletedAt: null });
     }
+  };
+
+  const softDelete = (id: string) => {
+    updateTask(id, { deleted: true, deletedAt: new Date().toISOString() });
   };
 
   return (
@@ -275,9 +291,9 @@ export default function TasksPage() {
       </div>
 
       <div className="stat-row">
-        <div className="stat-card"><div className="stat-value" style={{ color: '#94a3b8' }}>{tasks.length}</div><div className="stat-label">Tổng</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#666' }}>{draftTasks.length}</div><div className="stat-label">Nháp</div></div>
-        <div className="stat-card"><div className="stat-value" style={{ color: '#818cf8' }}>{grouped.doing.length}</div><div className="stat-label">Đang làm</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#94a3b8' }}>{tasks.filter(t => !t.deleted).length}</div><div className="stat-label">Đang làm</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#666' }}>{grouped.draft.length}</div><div className="stat-label">Nháp</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#818cf8' }}>{grouped.doing.length}</div><div className="stat-label">Đang học</div></div>
         <div className="stat-card"><div className="stat-value" style={{ color: '#22c55e' }}>{grouped.done.length}</div><div className="stat-label">Hoàn thành</div></div>
       </div>
 
@@ -290,10 +306,10 @@ export default function TasksPage() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
           </span>
           Tất cả
-          <span className="assignee-count">{tasks.length}</span>
+          <span className="assignee-count">{tasks.filter(t => !t.deleted).length}</span>
         </button>
         {members.map(m => {
-          const count = tasks.filter(t => t.assigneeId === m.id).length;
+          const count = tasks.filter(t => t.assigneeId === m.id && !t.deleted).length;
           return (
             <button
               key={m.id}
@@ -306,10 +322,19 @@ export default function TasksPage() {
             </button>
           );
         })}
+        <button
+          className={`assignee-chip${showDeleted ? ' active' : ''}`}
+          onClick={() => setShowDeleted(!showDeleted)}
+          style={showDeleted ? {} : { borderColor: '#333' }}
+        >
+          <Trash2 size={14} />
+          Đã xóa
+          <span className="assignee-count">{deletedTasks.length}</span>
+        </button>
       </div>
 
       <div className="kanban-board">
-        {(Object.keys(grouped) as ('todo' | 'doing' | 'done')[]).map(status => (
+        {(Object.keys(grouped) as TaskStatus[]).map(status => (
           <KanbanColumn
             key={status}
             status={status}
@@ -317,11 +342,31 @@ export default function TasksPage() {
             subjects={subjects}
             members={members}
             onUpdate={updateTask}
-            onRemove={removeTask}
+            onRemove={softDelete}
             onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
           />
         ))}
       </div>
+
+      {showDeleted && deletedTasks.length > 0 && (
+        <>
+          <div style={{ marginTop: 28, marginBottom: 12, fontWeight: 600, fontSize: 14, color: '#666', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Trash2 size={16} /> Đã xóa ({deletedTasks.length})
+          </div>
+          <div className="kanban-board" style={{ opacity: 0.6 }}>
+            <KanbanColumn
+              status="draft"
+              tasks={deletedTasks}
+              subjects={subjects}
+              members={members}
+              onUpdate={updateTask}
+              onRemove={softDelete}
+              onEdit={(task) => { setEditTask(task); setModalOpen(true); }}
+              compact
+            />
+          </div>
+        </>
+      )}
 
       <TaskFormModal
         open={modalOpen}

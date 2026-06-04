@@ -75,7 +75,12 @@ export function subscribeTasks(groupId: string, onData: (items: Task[]) => void)
   const q = query(collection(db, 'tasks'), where('groupId', '==', groupId));
   return onSnapshot(q, snap => {
     const list: Task[] = [];
-    snap.forEach(d => list.push({ id: d.id, ...d.data() } as Task));
+    snap.forEach(d => {
+      const t = { id: d.id, ...d.data() } as Task;
+      t.deleted = t.deleted ?? false;
+      t.deletedAt = t.deletedAt ?? null;
+      list.push(t);
+    });
     onData(list);
   });
 }
@@ -117,6 +122,8 @@ export async function setTask(task: Task) {
     deadline: task.deadline,
     createdAt: task.createdAt,
     groupId: task.groupId,
+    deleted: task.deleted ?? false,
+    deletedAt: task.deletedAt ?? null,
   });
 }
 
