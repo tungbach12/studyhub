@@ -18,7 +18,7 @@ export interface Subject {
   groupId: string;
 }
 
-export type TaskStatus = 'todo' | 'doing' | 'done';
+export type TaskStatus = 'draft' | 'todo' | 'doing' | 'done';
 
 export interface Task {
   id: string;

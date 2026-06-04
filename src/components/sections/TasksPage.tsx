@@ -1,7 +1,8 @@
 import { useApp } from '../../hooks/useApp';
 import { useState, useEffect } from 'react';
 import type { TaskStatus, Task } from '../../types';
-import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowRight, ArrowLeft, X, Circle, Loader2, CheckCircle2 } from 'lucide-react';
+import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowRight, ArrowLeft, X, Circle, Loader2, CheckCircle2, Upload } from 'lucide-react';
+import ImportModal from './ImportModal';
 
 const STATUSES: { key: TaskStatus; label: string; icon: typeof Circle }[] = [
   { key: 'todo', label: 'Cần làm', icon: Circle },
@@ -10,6 +11,7 @@ const STATUSES: { key: TaskStatus; label: string; icon: typeof Circle }[] = [
 ];
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
+  draft: '#666',
   todo: '#94a3b8',
   doing: '#818cf8',
   done: '#22c55e',
@@ -225,15 +227,26 @@ export default function TasksPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [filterAssignee, setFilterAssignee] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleImport = (items: { title: string; description: string; subjectId: string; assigneeId: string | null; deadline: string | null; status: 'todo' | 'draft' }[]) => {
+    const now = new Date().toISOString();
+    items.forEach(t => {
+      addTask({ ...t, createdAt: now, groupId: '' });
+    });
+  };
 
   const visibleTasks = filterAssignee
     ? tasks.filter(t => t.assigneeId === filterAssignee)
     : tasks;
 
+  const draftTasks = tasks.filter(t => t.status === 'draft');
+  const activeTasks = visibleTasks.filter(t => t.status !== 'draft');
+
   const grouped = {
-    todo: visibleTasks.filter(t => t.status === 'todo'),
-    doing: visibleTasks.filter(t => t.status === 'doing'),
-    done: visibleTasks.filter(t => t.status === 'done'),
+    todo: activeTasks.filter(t => t.status === 'todo'),
+    doing: activeTasks.filter(t => t.status === 'doing'),
+    done: activeTasks.filter(t => t.status === 'done'),
   } as const;
 
   const handleSave = (data: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
@@ -251,13 +264,19 @@ export default function TasksPage() {
           <h1>Nhiệm vụ</h1>
           <p>Bảng Kanban — kéo thả hoặc dùng nút để cập nhật trạng thái</p>
         </div>
-        <button className="btn btn-primary add-task-btn" onClick={() => { setEditTask(null); setModalOpen(true); }}>
-          <PlusCircle size={18} /> Thêm nhiệm vụ
-        </button>
+        <div className="add-task-actions">
+          <button className="btn add-task-btn" onClick={() => setImportOpen(true)}>
+            <Upload size={18} /> Import
+          </button>
+          <button className="btn btn-primary add-task-btn" onClick={() => { setEditTask(null); setModalOpen(true); }}>
+            <PlusCircle size={18} /> Thêm nhiệm vụ
+          </button>
+        </div>
       </div>
 
       <div className="stat-row">
         <div className="stat-card"><div className="stat-value" style={{ color: '#94a3b8' }}>{tasks.length}</div><div className="stat-label">Tổng</div></div>
+        <div className="stat-card"><div className="stat-value" style={{ color: '#666' }}>{draftTasks.length}</div><div className="stat-label">Nháp</div></div>
         <div className="stat-card"><div className="stat-value" style={{ color: '#818cf8' }}>{grouped.doing.length}</div><div className="stat-label">Đang làm</div></div>
         <div className="stat-card"><div className="stat-value" style={{ color: '#22c55e' }}>{grouped.done.length}</div><div className="stat-label">Hoàn thành</div></div>
       </div>
@@ -290,7 +309,7 @@ export default function TasksPage() {
       </div>
 
       <div className="kanban-board">
-        {(Object.keys(grouped) as TaskStatus[]).map(status => (
+        {(Object.keys(grouped) as ('todo' | 'doing' | 'done')[]).map(status => (
           <KanbanColumn
             key={status}
             status={status}
@@ -311,6 +330,12 @@ export default function TasksPage() {
         subjects={subjects}
         members={members}
         onSave={handleSave}
+      />
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImport}
       />
     </div>
   );
