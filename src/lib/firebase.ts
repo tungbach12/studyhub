@@ -1,5 +1,6 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? '',
@@ -13,12 +14,17 @@ const config = {
 export const hasFirebaseConfig = (): boolean =>
   config.apiKey !== '' && config.projectId !== '';
 
-let db: ReturnType<typeof getFirestore> | null = null;
+function getApp() {
+  if (getApps().length) return getApps()[0];
+  return initializeApp(config);
+}
 
 export function getDb() {
-  if (db) return db;
   if (!hasFirebaseConfig()) return null;
-  const app = initializeApp(config);
-  db = getFirestore(app);
-  return db;
+  return getFirestore(getApp());
+}
+
+export function getStorageInstance() {
+  if (!hasFirebaseConfig()) return null;
+  return getStorage(getApp());
 }

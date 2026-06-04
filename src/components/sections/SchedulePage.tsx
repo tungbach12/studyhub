@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../hooks/useApp';
+import MemberAvatar from '../ui/MemberAvatar';
 
 const DAYS = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'CN'];
 const HOURS = [
@@ -49,12 +50,13 @@ export default function SchedulePage() {
               className={`view-chip ${view === m.id ? 'active' : ''}`}
               onClick={() => setView(m.id)}
             >
-              <span
-                className="view-avatar"
-                style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
-              >
-                {m.name.charAt(0).toUpperCase()}
-              </span>
+              {m.avatarUrl ? (
+                <MemberAvatar member={m} size={26} className="view-avatar" />
+              ) : (
+                <span className="view-avatar" style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
+                  {m.name.charAt(0).toUpperCase()}
+                </span>
+              )}
               {m.name}
             </button>
           ))}
@@ -113,12 +115,13 @@ export default function SchedulePage() {
           {visibleMembers.map((m, i) => (
             <div key={m.id} className="member-schedule-card">
               <div className="member-sched-header">
-                <span
-                  className="member-sched-avatar"
-                  style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
-                >
-                  {m.name.charAt(0).toUpperCase()}
-                </span>
+                {m.avatarUrl ? (
+                  <MemberAvatar member={m} size={30} className="member-sched-avatar" />
+                ) : (
+                  <span className="member-sched-avatar" style={{ background: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
+                    {m.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
                 <span className="member-sched-name">{m.name}</span>
                 <span className="member-sched-free">
                   {m.schedule.filter(Boolean).length} / {m.schedule.length} khung rảnh

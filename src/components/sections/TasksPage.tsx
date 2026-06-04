@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import type { Task, TaskStatus } from '../../types';
 import { PlusCircle, Trash2, Pencil, CalendarDays, ArrowRight, ArrowLeft, X, Circle, Loader2, CheckCircle2, Upload, EyeOff, Eye, RotateCcw } from 'lucide-react';
 import ImportModal from './ImportModal';
+import MemberAvatar from '../ui/MemberAvatar';
 
 const STATUSES: { key: TaskStatus; label: string; icon: typeof Circle }[] = [
   { key: 'draft', label: 'Nháp', icon: EyeOff },
@@ -61,7 +62,7 @@ function TaskCard({
         <div className="task-card-meta">
           {mem && (
             <span className="task-card-assignee">
-              <span className="task-card-avatar">{mem.name.charAt(0).toUpperCase()}</span>
+              <MemberAvatar member={mem} size={22} className="task-card-avatar" />
               {mem.name}
             </span>
           )}
@@ -343,18 +344,18 @@ export default function TasksPage() {
           {members.map(m => {
             const count = tasks.filter(t => t.assigneeId === m.id && !t.deleted && t.status !== 'draft').length;
             return (
-              <button
-                key={m.id}
-                className={`assignee-chip${filterAssignee === m.id ? ' active' : ''}`}
-                onClick={() => setFilterAssignee(m.id === filterAssignee ? null : m.id)}
-              >
-                <span className="assignee-avatar">{m.name.charAt(0)}</span>
-                {m.name}
-                <span className="assignee-count">{count}</span>
-              </button>
-            );
-          })}
-        </div>
+            <button
+              key={m.id}
+              className={`assignee-chip${filterAssignee === m.id ? ' active' : ''}`}
+              onClick={() => setFilterAssignee(m.id === filterAssignee ? null : m.id)}
+            >
+              <MemberAvatar member={m} size={26} className="assignee-avatar" />
+              {m.name}
+              <span className="assignee-count">{count}</span>
+            </button>
+          );
+        })}
+      </div>
       )}
 
       <div className="kanban-board" style={viewFilter === 'deleted' ? { opacity: 0.6 } : {}}>

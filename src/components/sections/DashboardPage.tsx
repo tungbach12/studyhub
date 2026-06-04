@@ -1,5 +1,6 @@
 import { useApp } from '../../hooks/useApp';
 import { ArrowRight, Circle, CheckCircle2, Loader2, Users, BookOpen, Clock, ListTodo } from 'lucide-react';
+import MemberAvatar from '../ui/MemberAvatar';
 
 const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const HOURS = ['6-8', '8-10', '10-12', '12-14', '14-16', '16-18', '18-20', '20-22', '22-24'];
@@ -67,7 +68,7 @@ export default function DashboardPage() {
               return (
                 <div key={w.member.id} className="workload-row">
                   <div className="workload-info">
-                    <span className="workload-avatar">{w.member.name.charAt(0)}</span>
+                    <MemberAvatar member={w.member} size={28} className="workload-avatar" />
                     <span className="workload-name">{w.member.name}</span>
                     <span className="workload-count">{w.total} tasks</span>
                   </div>

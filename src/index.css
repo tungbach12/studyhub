@@ -403,6 +403,32 @@ select:focus {
   align-items: center;
   width: 100%;
 }
+.member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.member-avatar-wrap {
+  position: relative;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  line-height: 0;
+}
+.member-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 140ms;
+  border-radius: 50%;
+}
+.member-avatar-wrap:hover .member-avatar-overlay { opacity: 1; }
 .member-name {
   font-weight: 700;
   font-size: 16px;

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useApp } from '../../hooks/useApp';
-import { PlusCircle, Trash2, Eraser } from 'lucide-react';
+import { PlusCircle, Trash2, Eraser, Upload, Loader2 } from 'lucide-react';
+import MemberAvatar from '../ui/MemberAvatar';
+import { uploadAvatar } from '../../lib/storage';
 
 const DAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const HOURS = [
@@ -8,10 +10,13 @@ const HOURS = [
 ];
 
 export default function MembersPage() {
-  const { members, addMember, updateMember, removeMember } = useApp();
+  const { members, addMember, updateMember, removeMember, online } = useApp();
   const [name, setName] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [uploading, setUploading] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<string | null>(null);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +33,36 @@ export default function MembersPage() {
     setEditId(null);
   };
 
+  const handleAvatarClick = (memberId: string) => {
+    setUploadTarget(memberId);
+    fileRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadTarget) return;
+    try {
+      setUploading(uploadTarget);
+      const url = await uploadAvatar(uploadTarget, file);
+      updateMember(uploadTarget, { avatarUrl: url });
+    } catch (err: any) {
+      alert('Lỗi upload: ' + (err.message || 'unknown'));
+    } finally {
+      setUploading(null);
+      setUploadTarget(null);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
   return (
     <div className="page">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        hidden
+        onChange={handleFileChange}
+      />
       <div className="page-header">
         <h1>Thành viên nhóm</h1>
         <p>Thêm bạn học → điền lịch rảnh → tìm thời gian rảnh chung</p>
@@ -63,21 +96,33 @@ export default function MembersPage() {
                   </button>
                 </div>
               ) : (
-      <div className="name-row">
-                <span className="member-name">{m.name}</span>
-                <div className="member-actions">
-                  <button type="button" onClick={() => { setEditId(m.id); setEditName(m.name); }} className="btn btn-sm">Sửa</button>
-                  <button
-                    type="button"
-                    onClick={() => updateMember(m.id, { schedule: Array.from({ length: 63 }, () => false) })}
-                    className="btn btn-sm btn-ghost"
-                    title="Xóa toàn bộ lịch rảnh"
-                  >
-                    <Eraser size={15} />
-                  </button>
-                  <button type="button" onClick={() => removeMember(m.id)} className="btn btn-sm btn-danger"><Trash2 size={16} /></button>
+                <div className="name-row">
+                  <div className="member-name-row">
+                    <div className="member-avatar-wrap" onClick={() => handleAvatarClick(m.id)}>
+                      {uploading === m.id ? (
+                        <Loader2 size={32} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                      ) : (
+                        <MemberAvatar member={m} size={40} />
+                      )}
+                      <div className="member-avatar-overlay">
+                        <Upload size={14} />
+                      </div>
+                    </div>
+                    <span className="member-name">{m.name}</span>
+                  </div>
+                  <div className="member-actions">
+                    <button type="button" onClick={() => { setEditId(m.id); setEditName(m.name); }} className="btn btn-sm">Sửa</button>
+                    <button
+                      type="button"
+                      onClick={() => updateMember(m.id, { schedule: Array.from({ length: 63 }, () => false) })}
+                      className="btn btn-sm btn-ghost"
+                      title="Xóa toàn bộ lịch rảnh"
+                    >
+                      <Eraser size={15} />
+                    </button>
+                    <button type="button" onClick={() => removeMember(m.id)} className="btn btn-sm btn-danger"><Trash2 size={16} /></button>
+                  </div>
                 </div>
-              </div>
               )}
             </div>
             <p className="schedule-label">Tích chọn khung rảnh của {m.name}</p>

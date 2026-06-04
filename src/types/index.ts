@@ -9,6 +9,7 @@ export interface Member {
   name: string;
   schedule: boolean[];
   groupId: string;
+  avatarUrl?: string;
 }
 
 export interface Subject {
